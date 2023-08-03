@@ -1,0 +1,1 @@
+This is a language translation system whereby it will be translating spoken speech in real time between Luganda and English but it can be configured to support other languages like spanish, french and many others.
