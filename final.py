@@ -11,6 +11,8 @@ import os
 import time
 
 url = 'https://sunbird-ai-api-5bq6okiwgq-ew.a.run.app'
+API_URL = "https://api-inference.huggingface.co/models/indonesian-nlp/wav2vec2-luganda"
+api_headers = {"Authorization": "Bearer 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"}
 
 headers = {
     'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtYW5lbm8yMDIwIiwiZXhwIjo0ODQyMzE2MDYyfQ'
@@ -18,14 +20,12 @@ headers = {
     "Content-Type": "application/json"
 }
 
-API_URL = "https://api-inference.huggingface.co/models/indonesian-nlp/wav2vec2-luganda"
-api_headers = {"Authorization": "Bearer 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"}
-
 root = Tk()
 root.title("Luganda-English Language Translation")
 root.geometry("1080x400")
-root.resizable(False, False)
+root.resizable(True, True)
 root.configure(background="white")
+
 
 # Placeholder text
 placeholder_text = "Type a sentence or press the microphone to record audio"
@@ -95,17 +95,21 @@ def translate_now():
 
 
 def recognize_speech(audio_file_path, is_luganda):
+    r = sr.Recognizer()
+    with sr.Microphone() as source:
+        r.adjust_for_ambient_noise(source)
+        audio = r.listen(source)
+
     if is_luganda:
         api_url = API_URL
         headers = api_headers
     else:
-        api_url = f"{url}/tasks/tts"
-        headers = api_headers
+        recognized_text = r.recognize_google(audio)
 
     with open(audio_file_path, "rb") as f:
         data = f.read()
 
-    max_retries = 5  # Adjust the maximum number of retries as needed
+    max_retries = 3  # Adjust the maximum number of retries as needed
     retries = 0
 
     while retries < max_retries:
@@ -155,28 +159,39 @@ def listen_audio():
         r.adjust_for_ambient_noise(source)
         audio = r.listen(source)
 
+    # Clear text field before listening
+    text1.delete(1.0, END)
+
     temp_audio_file = "temp.wav"
     with open(temp_audio_file, "wb") as f:
         f.write(audio.get_wav_data())
 
-    if combo1.get() == "Luganda":
-        is_luganda = True
-    else:
-        is_luganda = False
-
+    # if combo1.get() == "Luganda":
+    #     is_luganda = True
+    #     output = recognize_speech(temp_audio_file, is_luganda)
+    #     if output:
+    #         recognized_text = output["text"]  # Assuming the API response contains the recognized text
+    #         text1.delete(1.0, END)
+    #         text1.insert(END, recognized_text)
     try:
-        output = recognize_speech(temp_audio_file, is_luganda)
-        if output:
-            recognized_text = output["text"]  # Assuming the API response contains the recognized text
-            text1.delete(1.0, END)
+        if combo1.get() == "Luganda":
+            is_luganda = True
+            output = recognize_speech(temp_audio_file, is_luganda)
+        else:
+
+            output = r.recognize_google(audio )
+
+        if "text" in output:
+            recognized_text = output["text"]
             text1.insert(END, recognized_text)
+        else:
+            text = r.recognize_google(audio)
+            text1.insert(END, text)
+            # print("No 'text' key found in the API response.")
     except sr.UnknownValueError:
         print("Speech recognition could not understand audio")
     except sr.RequestError as e:
         print("Could not request results from the recognition service; {0}".format(e))
-    finally:
-        if os.path.exists(temp_audio_file):
-            os.remove(temp_audio_file)
 
 
 def play_audio(audio_data):
